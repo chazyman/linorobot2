@@ -46,10 +46,6 @@ def generate_launch_description():
         [FindPackageShare('linorobot2_bringup'), 'launch', 'custom_robot.launch.py']
     )
 
-    extra_launch_path = PathJoinSubstitution(
-        [FindPackageShare('linorobot2_bringup'), 'launch', 'extra.launch.py']
-    )
-
     return LaunchDescription([
         DeclareLaunchArgument(
             name='custom_robot', 
@@ -58,23 +54,11 @@ def generate_launch_description():
         ),
 
         DeclareLaunchArgument(
-            name='extra', 
-            default_value='false',
-            description='Launch extra launch file'
-        ),
-
-        DeclareLaunchArgument(
             name='base_serial_port', 
             default_value='/dev/ttyACM0',
             description='Linorobot Base Serial Port'
         ),
 
-        DeclareLaunchArgument(
-            name='odom_topic', 
-            default_value='/odom',
-            description='EKF out odometry topic'
-        ),
-        
         DeclareLaunchArgument(
             name='joy', 
             default_value='false',
@@ -89,7 +73,7 @@ def generate_launch_description():
             parameters=[
                 ekf_config_path
             ],
-            remappings=[("odometry/filtered", LaunchConfiguration("odom_topic"))]
+            remappings=[("odometry/filtered", "odom")]
         ),
 
         IncludeLaunchDescription(
@@ -98,11 +82,6 @@ def generate_launch_description():
             launch_arguments={
                 'base_serial_port': LaunchConfiguration("base_serial_port")
             }.items()
-        ),
-
-        IncludeLaunchDescription(
-            PythonLaunchDescriptionSource(extra_launch_path),
-            condition=IfCondition(LaunchConfiguration("extra")),
         ),
 
         IncludeLaunchDescription(

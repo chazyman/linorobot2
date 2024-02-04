@@ -19,19 +19,27 @@ from launch.substitutions import LaunchConfiguration, Command, PathJoinSubstitut
 from launch.launch_description_sources import PythonLaunchDescriptionSource
 from launch_ros.actions import Node
 from launch_ros.substitutions import FindPackageShare
-from launch_ros.actions import ComposableNodeContainer
-from launch_ros.descriptions import ComposableNode
 
 
 def generate_launch_description():
     use_sim_time = True
+    robot_base = os.getenv('LINOROBOT2_BASE')
+
+    world_name = "trajectory_follower"
+    #world_name = 'playground2'
+
+    gazebo_launch_path = PathJoinSubstitution(
+        [FindPackageShare('ros_gz_sim'), 'launch', 'gz_sim.launch.py']
+    )
 
     ekf_config_path = PathJoinSubstitution(
         [FindPackageShare("linorobot2_base"), "config", "ekf.yaml"]
     )
 
     world_path = PathJoinSubstitution(
-        [FindPackageShare("linorobot2_gazebo"), "worlds", "playground.world"]
+        [FindPackageShare("linorobot2_gazebo"), "worlds", "trajectory_follower.sdf"]
+        #[FindPackageShare("linorobot2_gazebo"), "worlds", "elevator.sdf"]
+        #[FindPackageShare("linorobot2_gazebo"), "worlds", "playground2.sdf"]
     )
 
     description_launch_path = PathJoinSubstitution(
@@ -45,24 +53,69 @@ def generate_launch_description():
             description='Gazebo world'
         ),
 
-        ExecuteProcess(
-            cmd=['gazebo', '--verbose', '-s', 'libgazebo_ros_factory.so',  '-s', 'libgazebo_ros_init.so', LaunchConfiguration('world')],
-            output='screen'
+        IncludeLaunchDescription(
+            PythonLaunchDescriptionSource(description_launch_path),
+            launch_arguments={
+                'use_sim_time': str(use_sim_time),
+                'publish_joints': 'false',
+            }.items()
+        ),
+
+        IncludeLaunchDescription(
+            PythonLaunchDescriptionSource(gazebo_launch_path),
+            launch_arguments={
+                'gz_args': world_path
+            }.items()
         ),
 
         Node(
-            package='gazebo_ros',
-            executable='spawn_entity.py',
-            name='urdf_spawner',
+            package='ros_gz_sim',
+            executable='create',
             output='screen',
-            arguments=["-topic", "robot_description", "-entity", "linorobot2"]
+            arguments=[
+                '-topic', 'robot_description', 
+                '-name', f'linorobot2_{robot_base}'
+            ],
+        ),
+    # trajectory_follower
+    # playground2
+        Node(
+            package="ros_gz_bridge",
+            executable="parameter_bridge",
+            arguments=[
+                '/clock@rosgraph_msgs/msg/Clock[ignition.msgs.Clock',
+                f'/world/{world_name}/model/linorobot2_{robot_base}/joint_state@sensor_msgs/msg/JointState[gz.msgs.Model',            
+                f'/model/linorobot2_{robot_base}/tf@tf2_msgs/msg/TFMessage[gz.msgs.Pose_V',
+                '/cmd_vel@geometry_msgs/msg/Twist@ignition.msgs.Twist',
+                '/odom/unfiltered@nav_msgs/msg/Odometry[ignition.msgs.Odometry',
+                '/imu/data@sensor_msgs/msg/Imu[ignition.msgs.IMU',
+                '/scan@sensor_msgs/msg/LaserScan[ignition.msgs.LaserScan',
+                '/camera/camera_info@sensor_msgs/msg/CameraInfo[ignition.msgs.CameraInfo',
+                '/camera/image@sensor_msgs/msg/Image[ignition.msgs.Image',
+                '/camera/depth_image@sensor_msgs/msg/Image[ignition.msgs.Image',
+                '/camera/points@sensor_msgs/msg/PointCloud2[ignition.msgs.PointCloudPacked',
+            ],
+            remappings=[
+                (f'/world/{world_name}/model/linorobot2_{robot_base}/joint_state', '/joint_states'),
+                (f'/model/linorobot2_{robot_base}/tf','/tf'), 
+                ('/camera/camera_info', '/camera/color/camera_info'),
+                ('/camera/image', '/camera/color/image_raw'),
+                ('/camera/depth_image', '/camera/depth/image_rect_raw'),
+                ('/camera/points', '/camera/depth/color/points'),
+            ]
         ),
 
         Node(
-            package='linorobot2_gazebo',
-            executable='command_timeout.py',
-            name='command_timeout'
+            package="tf2_ros", 
+            executable = "static_transform_publisher",
+            arguments = ["0.", "0.", "0.", "0.", "0.", "0.", "camera_bottom_screw_frame", "linorobot2/base_footprint/camera"]
         ),
+
+        # Node(
+        #     package='linorobot2_gazebo',
+        #     executable='command_timeout',
+        #     name='command_timeout'
+        # ),
 
         Node(
             package='robot_localization',
@@ -75,47 +128,6 @@ def generate_launch_description():
             ],
             remappings=[("odometry/filtered", "odom")]
         ),
-
-        IncludeLaunchDescription(
-            PythonLaunchDescriptionSource(description_launch_path),
-            launch_arguments={
-                'use_sim_time': str(use_sim_time),
-                'publish_joints': 'false',
-            }.items()
-        ),
-        ComposableNodeContainer(
-            name='image_container',
-            namespace='',
-            package='rclcpp_components',
-            executable='component_container',
-            composable_node_descriptions=[
-                # Decimate cloud to 160x120
-                ComposableNode(
-                    package='image_proc',
-                    plugin='image_proc::CropDecimateNode',
-                    name='depth_downsample',
-                    parameters=[{'decimation_x': 4, 'decimation_y': 4}],
-                    remappings=[
-                        ('in/image_raw', '/camera/depth/image_rect_raw'),
-                        ('in/camera_info', '/camera/depth/camera_info'),
-                        ('out/image_raw', '/camera/downsampled/depth/image_raw'),
-                        ('out/camera_info', '/camera/downsampled/depth/camera_info')
-                    ],
-                ),
-                # Downsampled XYZ point cloud (mainly for navigation)
-                ComposableNode(
-                    package='depth_image_proc',
-                    plugin='depth_image_proc::PointCloudXyzNode',
-                    name='points_downsample',
-                    remappings=[
-                        ('image_rect', '/camera/downsampled/depth/image_raw'),
-                        ('camera_info', '/camera/downsampled/depth/camera_info'),
-                        ('points', '/camera/downsampled/depth/pointcloud')
-                    ],
-                )
-            ],
-            output='both',
-        )
     ])
 
 #sources: 

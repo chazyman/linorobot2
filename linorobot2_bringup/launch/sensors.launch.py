@@ -20,12 +20,11 @@ from launch.launch_description_sources import PythonLaunchDescriptionSource
 from launch_ros.substitutions import FindPackageShare
 from launch.conditions import IfCondition
 from launch_ros.actions import Node
-from launch_ros.actions import ComposableNodeContainer
-from launch_ros.descriptions import ComposableNode
 
 
 def generate_launch_description():
     laser_sensor_name = os.getenv('LINOROBOT2_LASER_SENSOR', '')
+    base_laser_sensor_name = os.getenv('LINOROBOT2_BASE_LASER_SENSOR', '')
     depth_sensor_name = os.getenv('LINOROBOT2_DEPTH_SENSOR', '')
     
     fake_laser_config_path = PathJoinSubstitution(
@@ -42,10 +41,7 @@ def generate_launch_description():
         'zed': ['/zed/depth/depth_registered', '/zed/depth/camera_info'],
         'zed2': ['/zed/depth/depth_registered', '/zed/depth/camera_info'],
         'zed2i': ['/zed/depth/depth_registered', '/zed/depth/camera_info'],
-        'zedm': ['/zed/depth/depth_registered', '/zed/depth/camera_info'],
-        'oakd': ['/right/image_rect', '/right/camera_info'],
-        'oakdlite': ['/right/image_rect', '/right/camera_info'],
-        'oakdpro': ['/right/image_rect', '/right/camera_info'],
+        'zedm': ['/zed/depth/depth_registered', '/zed/depth/camera_info']
     }
 
     laser_launch_path = PathJoinSubstitution(
@@ -60,15 +56,25 @@ def generate_launch_description():
         IncludeLaunchDescription(
             PythonLaunchDescriptionSource(laser_launch_path),
             condition=IfCondition(PythonExpression(['"" != "', laser_sensor_name, '"'])),
+            launch_arguments={'sensor': laser_sensor_name}.items()   
+        ),
+
+        IncludeLaunchDescription(
+            PythonLaunchDescriptionSource(laser_launch_path),
+            condition=IfCondition(PythonExpression(['"" != "', base_laser_sensor_name, '"'])),
             launch_arguments={
-                'sensor': laser_sensor_name
+                'sensor': base_laser_sensor_name,
+                'topic_name': 'base/scan',
+                'frame_id': 'base_laser'
             }.items()   
         ),
+
         IncludeLaunchDescription(
             PythonLaunchDescriptionSource(depth_launch_path),
             condition=IfCondition(PythonExpression(['"" != "', depth_sensor_name, '"'])),
             launch_arguments={'sensor': depth_sensor_name}.items()   
         ),
+
         Node(
             condition=IfCondition(PythonExpression(['"" != "', laser_sensor_name, '" and ', '"', laser_sensor_name, '" in "', str(list(depth_sensors.keys())[1:]), '"'])),
             package='depthimage_to_laserscan',
@@ -76,40 +82,6 @@ def generate_launch_description():
             remappings=[('depth', depth_sensors[depth_sensor_name][0]),
                         ('depth_camera_info', depth_sensors[depth_sensor_name][1])],
             parameters=[fake_laser_config_path]
-        ),
-        #Downsample depth data https://www.robotandchisel.com/2020/09/01/navigation2/
-        ComposableNodeContainer(
-            condition=IfCondition(PythonExpression(['"" != "', depth_sensor_name, '"'])),
-            name='image_container',
-            namespace='',
-            package='rclcpp_components',
-            executable='component_container',
-            composable_node_descriptions=[
-                # Decimate cloud to 160x120
-                ComposableNode(
-                    package='image_proc',
-                    plugin='image_proc::CropDecimateNode',
-                    name='depth_downsample',
-                    parameters=[{'decimation_x': 4, 'decimation_y': 4}],
-                    remappings=[
-                        ('in/image_raw', depth_sensors[depth_sensor_name][0]),
-                        ('in/camera_info', depth_sensors[depth_sensor_name][1]),
-                        ('out/image_raw', '/camera/downsampled/depth/image_raw'),
-                        ('out/camera_info', '/camera/downsampled/depth/camera_info')
-                    ],
-                ),
-                # Downsampled XYZ point cloud (mainly for navigation)
-                ComposableNode(
-                    package='depth_image_proc',
-                    plugin='depth_image_proc::PointCloudXyzNode',
-                    name='points_downsample',
-                    remappings=[
-                        ('image_rect', '/camera/downsampled/depth/image_raw'),
-                        ('camera_info', '/camera/downsampled/depth/camera_info'),
-                        ('points', '/camera/downsampled/depth/pointcloud')
-                    ],
-                )
-            ],
-            output='both',
         )
     ])
+
