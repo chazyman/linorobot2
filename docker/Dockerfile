@@ -37,7 +37,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
         python3-pip \
     && rm -rf /var/lib/apt/lists/*
 
-FROM nvidia/cuda:12.1.0-runtime-ubuntu${UBUNTU_VER} as ros2nvidia
+FROM nvidia/cuda:12.1.0-runtime-ubuntu${UBUNTU_VER} AS ros2nvidia
 SHELL ["/bin/bash", "-c"]
 ENV DEBIAN_FRONTEND=noninteractive
 
