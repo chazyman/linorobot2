@@ -4,7 +4,7 @@ ARG RUNTIME=
 ARG DEPLOY=
 ARG RMW=
 
-FROM --platform=$BUILDPLATFORM ros:${USE_ROS_DISTRO}-ros-base as ros2
+FROM --platform=$BUILDPLATFORM ros:${USE_ROS_DISTRO}-ros-base AS ros2
 SHELL ["/bin/bash", "-c"]
 ENV DEBIAN_FRONTEND=noninteractive
 
@@ -112,7 +112,7 @@ ENV NVIDIA_VISIBLE_DEVICES=all
 ENV NVIDIA_DRIVER_CAPABILITIES=graphics,utility,compute
 ENV QT_X11_NO_MITSHM=1
 
-from ros2${RUNTIME} as common
+FROM ros2${RUNTIME} AS common
 SHELL ["/bin/bash", "-c"]
 
 ARG RMW=
@@ -149,7 +149,7 @@ RUN if [ ${RUNTIME} == "nvidia" ]; then \
 RUN sed -i "s/rosdistro/${ROS_DISTRO}/" /root/entrypoint.sh
 RUN chmod +x /root/entrypoint.sh
 
-from common as hardware
+FROM common AS hardware
 SHELL ["/bin/bash", "-c"]
 
 RUN mkdir -p /root/preinstall/bringup
@@ -192,7 +192,7 @@ RUN source /opt/ros/$ROS_DISTRO/setup.bash \
 RUN source /opt/ros/$ROS_DISTRO/setup.bash \
     && colcon build
 
-from common as simulation
+FROM common AS simulation
 SHELL ["/bin/bash", "-c"]
 
 RUN git clone https://github.com/osrf/gazebo_models.git /root/.gazebo/models
@@ -205,7 +205,7 @@ RUN apt-get update \
         && rosdep install --rosdistro=${ROS_DISTRO} --from-paths /root/preinstall -iry --os=ubuntu:$(lsb_release -sc) \
     && rm -rf /var/lib/apt/lists/*
 
-from ${DEPLOY} as base
+FROM ${DEPLOY} AS base
 SHELL ["/bin/bash", "-c"]
 
 COPY . /root/linorobot2_ws/src/linorobot2
