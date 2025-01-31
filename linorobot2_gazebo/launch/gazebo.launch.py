@@ -51,6 +51,12 @@ def generate_launch_description():
         ),
 
         DeclareLaunchArgument(
+            name='odom_topic', 
+            default_value='/odom',
+            description='EKF out odometry topic'
+        ),
+
+        DeclareLaunchArgument(
             name='world', 
             default_value=world_path,
             description='Gazebo world'
@@ -115,7 +121,7 @@ def generate_launch_description():
                 {'use_sim_time': use_sim_time}, 
                 ekf_config_path
             ],
-            remappings=[("odometry/filtered", "odom")]
+            remappings=[("odometry/filtered", LaunchConfiguration("odom_topic"))]
         ),
 
         IncludeLaunchDescription(
