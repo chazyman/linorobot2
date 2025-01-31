@@ -34,11 +34,22 @@ def generate_launch_description():
         [FindPackageShare("linorobot2_gazebo"), "worlds", "playground.world"]
     )
 
+    robot_base = os.getenv('LINOROBOT2_BASE')
+    urdf_path = PathJoinSubstitution(
+        [FindPackageShare("linorobot2_description"), "urdf/robots", f"{robot_base}.urdf.xacro"]
+    )
+
     description_launch_path = PathJoinSubstitution(
         [FindPackageShare('linorobot2_description'), 'launch', 'description.launch.py']
     )
 
     return LaunchDescription([
+        DeclareLaunchArgument(
+            name='urdf', 
+            default_value=urdf_path,
+            description='URDF path'
+        ),
+
         DeclareLaunchArgument(
             name='world', 
             default_value=world_path,
@@ -112,6 +123,7 @@ def generate_launch_description():
             launch_arguments={
                 'use_sim_time': str(use_sim_time),
                 'publish_joints': 'false',
+                'urdf': LaunchConfiguration('urdf')
             }.items()
         )
     ])
