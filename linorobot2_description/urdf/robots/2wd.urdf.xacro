@@ -72,9 +72,9 @@
 
   <xacro:rgb_camera
       parent="base_link"
-      name="front_rgb_camera"
-      topic_name="front_rgb_camera">
-    <xacro:insert_block name="front_camera_sensor_pose" />
+      name="rear_rgb_camera"
+      topic_name="rear_rgb_camera/image">
+    <xacro:insert_block name="rear_camera_sensor_pose" />
   </xacro:rgb_camera>
 
   <xacro:diff_drive_controller
