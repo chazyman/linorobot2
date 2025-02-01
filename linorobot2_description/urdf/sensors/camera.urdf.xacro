@@ -1,0 +1,77 @@
+<robot xmlns:xacro="http://ros.org/wiki/xacro">
+  <xacro:property name="M_PI" value="3.1415926535897931" />
+  <xacro:macro name="rgb_camera" params="*origin parent name topic_name">
+    <link name="${name}_link">
+      <visual>
+        <origin xyz="0 0 0" rpy="0 0 0"/>
+        <geometry>
+          <box size="0.030 0.124 0.030"/>
+        </geometry>
+        <material name="blue">
+          <color rgba="0.003 0.223 0.639 1.0"/>
+        </material>
+      </visual>
+      
+      <collision>
+        <origin xyz="0 0 0" rpy="0 0 0"/>
+        <geometry>
+          <box size="0.030 0.124 0.030"/>
+        </geometry>
+      </collision>
+
+      <inertial>
+        <origin xyz="0 0 0" rpy="0 0 0"/>
+        <mass value="0.135"/>
+        <inertia ixx="${(1/12) * 0.135 * ((0.124  * 0.124)  + (0.030 * 0.030))}" ixy="0.0" ixz="0.0"
+                 iyy="${(1/12) * 0.135 * ((0.030 * 0.030) + (0.030 * 0.030))}" iyz="0.0"
+                 izz="${(1/12) * 0.135 * ((0.030 * 0.030) + (0.124  * 0.124))}"/>
+      </inertial>
+    </link>
+    
+    <gazebo reference="${name}_link">  
+      <visual>  
+        <material>
+          <ambient>0.051 0.047 0.416 1.0</ambient>  
+          <diffuse>0.051 0.047 0.416 1.0</diffuse>  
+          <specular>0.051 0.047 0.416 1.0</specular>  
+          <emissive>0.051 0.047 0.416 1.0</emissive>  
+        </material>
+      </visual> 
+    </gazebo>
+
+    <joint name="${name}_to_${parent}" type="fixed">
+      <parent link="${parent}"/>
+      <child link="${name}_link"/>
+      <xacro:insert_block name="origin" />
+    </joint>
+
+    <!-- https://github.com/ros-simulation/gazebo_ros_pkgs/wiki/ROS-2-Migration:-Camera#gazebo_ros_camera -->
+    <gazebo reference="${name}_link">
+      <sensor name="${name}" type="camera">
+        <always_on>true</always_on>
+        <update_rate>30.0</update_rate>
+        <camera name="${name}">
+          <horizontal_fov>1.50098</horizontal_fov>
+          <image>
+            <width>640</width>
+            <height>480</height>
+            <format>R8G8B8</format>
+          </image>
+        </camera>
+        <plugin name="rgb_${name}_controller" filename="libgazebo_ros_camera.so">
+          <ros>
+            <remapping>${name}/image_raw:=${topic_name}</remapping>
+          </ros>
+          <hack_baseline>0.07</hack_baseline>
+          <frame_name>${name}_link</frame_name>
+          <distortion_k1>0.00000001</distortion_k1>
+          <distortion_k2>0.00000001</distortion_k2>
+          <distortion_k3>0.00000001</distortion_k3>
+          <distortion_t1>0.00000001</distortion_t1>
+          <distortion_t2>0.00000001</distortion_t2>
+        </plugin>
+      </sensor>
+
+    </gazebo>
+  </xacro:macro>
+</robot>
