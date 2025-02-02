@@ -1,9 +1,9 @@
 # linorobot2
 ![linorobot2](docs/linorobot2.gif)
 
-linorobot2 is a ROS2 port of the [linorobot](https://github.com/linorobot/linorobot) package. If you're planning to build your own custom ROS2 robot (2WD, 4WD, Mecanum Drive) using accessible parts, then this package is for you. This repository contains launch files to easily integrate your DIY robot with Nav2 and a simulation pipeline to run and verify your experiments on a virtual robot in Gazebo. 
+linorobot2 is a ROS2 implementation of the [linorobot](https://github.com/linorobot/linorobot) package for building custom robots with 2WD, 4WD, or Mecanum drive configurations. This package provides launch files for Nav2 integration and includes a complete simulation pipeline in Gazebo.
 
-Once the robot's URDF has been configured in linorobot2_description package, users can easily switch between booting up the physical robot and spawning the virtual robot in Gazebo. 
+The software stack integrated in this package is hardware agnosticso users can switch between booting up the physical robot and spawning the virtual robot in Gazebo. 
 
 ![linorobot2_architecture](docs/linorobot2_launchfiles.png)
 
